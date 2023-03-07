@@ -1,55 +1,35 @@
 %{
-    #include "y.tab.h"
-    #include <stdio.h>
-    #include <string.h>
-    #define MAX_STRING_SIZE 1024
-    char string_value[MAX_STRING_SIZE];
-    int string_len = 0;
-    int in_string_quotes = 0;//1 if in string quotes, 0 if not
+#include <string>
 
-    //BISON-BRIDGE PARSER:
-    //#define YY_DECL int yylex(YYSTYPE *yylval_param, yyscan_t yyscanner)
+/*Implementation of yyFlexScanner*/
+#include "kv_scanner.hpp"
+#undef YY_DECL
+#define YY_DECL int KV::KV_Scanner::yylex(KV::KV_Parser::semantic_type* const lval, KV::KV_Parser::location_type* location)//, kv::Driver& driver)
+
+/*To keep classical "token" been used below, but as own defined one*/
+using token = KV::KV_Parser::token;
+
+#define yyterminate() return token::END
+#define YY_NO_UNISTD_H 
+/*Update location on matching*/
+#define YY_USER_ACTION loc->step(); loc->columns(yyleng);
+
 %}
+
+
+%option debug
+%option nodefault
+%option yyclass="MC::MC_Scanner"
 %option noyywrap
-/**************** ABOUT LEX OPTION ****************/
-/* yywarp() will return 0 to resume scanning if another file come from "yyin"*/
-/* Modern Flex do not need it, thus here we always include this option*/
-/* option yylineno will count the line number of the input file(auto increase)*/
-/* option case-insensitive treat upper and lowercase the same, but not influence reads in yytext*/
-
-/**************** ABOUT LEX FUNCTION ****************/
-/* yylval store the value */
-/* yylineno is the line number of the input file*/
-/* yyterminate() will terminate the scanner return YY_NULL, and bison will interprets as the EOF*/
-
-/**************** ABOUT REGULAR EXPRESSION ****************/
-/* [] match any character in the bracket*/
-/* () group the regular expression, a(bc|de) = abc or ade*/
-/* {} repeat the regular expression, a{3} = aaa, A{1,3} = 1 to 3 As*/
-/* | or, a|b = a or b*/
-/* ^ match the beginning of the line*/
-/* $ match the end of the line*/
-/* . match any character except newline*/
-/* * repeat the previous regular expression 0 or more times, [ \t]* match optional spaces/tabs */
-/* + repeat the previous regular expression 1 or more times, [ \t]+ match 1 or more spaces/tabs */
-/* ? repeat the previous regular expression 0 or 1 time, [ \t]? match 0 or 1 spaces/tabs */
-/* \ escape the metacharacter, \. match . */
-/* "..." anything inside treated literally*/
-/* '...' anything inside treated literally*/
-/* / match the regular expression followed by another regular expression, a/b = matched a only followed by b*/
-/*\'(([^\']|\\\')*[^\\])?\'				{printf("%s\t\tSTRING\n",yytext); return STRING; }*/
-/*\"(([^\"]|\\\")*[^\\])?\"				{printf("%s\t\tSTRING\n",yytext); return STRING; }*/
-/*<STRING>\\'       { string_value[string_len++] = '\'';}*/
-/*<STRING>\\"       { string_value[string_len++] = '\"';}*/
-/*// Change \n etc. to it's corresponding character*/
+%option c++
 
 %x STRING_QUOTATION
-/**************** ABOUT MATCHING STRING ****************/
-/* %x defineds a new state, and the following rules will be applied in this state, here we define a STRING state*/
-/* .|\n match everything, but ([^"]|\n)+ can match a long string of text at once*/
-/* here we exclude the " so the following rule can match the end of string*/
-/* Do not match the STRING in single flex pattern, because it will limit the size to 16K*/
 %%
+
+%{  /*Executed at the beginning of yylex*/
+    yylval = lval;
+%}
+
 [ \t\n]+		;
 \"                          {in_string_quotes=1; BEGIN(STRING_QUOTATION);}
 <STRING_QUOTATION>\"        { 
@@ -109,9 +89,3 @@ MOVE          {printf("%s\t\tMOVE\n",yytext); return MOVE; }
 (([a-zA-Z][a-zA-Z0-9]{0,127})(\.([a-zA-Z][a-zA-Z0-9]{0,127}))?)		{printf("%s\t\tIDENTIFIER\n",yytext); return IDENTIFIER; }
 [0-9]+							{printf("%s\t\tNUMBER\n",yytext); return NUMBER; }
 %%
-/*when program need lex, call yylex() to enter scanner routine above*/
-
-// int yywrap(void)
-// {
-//     return 1;
-// }

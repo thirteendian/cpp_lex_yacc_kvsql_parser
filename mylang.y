@@ -4,11 +4,6 @@
     #include <string.h>
     int yyerror(char *s);
     int yylex();
-    
-    // #define MAX_STRING_SIZE 1024
-    // char string_value[MAX_STRING_SIZE];
-    //int string_len = 0;
-    //int in_string_quotes = 0;//1 if in string quotes, 0 if not
 
     struct Node {
         struct Node* child;
@@ -22,6 +17,10 @@
 
 //User defined type, all members share the same memory, 
 //always use only enough memory to store the largest member
+
+//Printing the parse node in the semantic action therefore produces a post-order walk.
+//construct a parse tree and print it out at the end of the parse
+//but normally it's more common to use an AST (abstract syntax tree)
 %union {
     struct Node* node;
     char* str;
@@ -71,11 +70,17 @@
 %token <node> IDENTIFIER
 %token <node> STRING
 %token <node> NUMBER
+
 /* %token <node> SELECTALL */
 //Provide values for lexical header files
 %type <node> program database_stmt table_stmt create_db select_db ls_keys string_stm list_stm set_stm delete_stm  
 %type <node> id_stm id_list value value_list key_value_list
 %%
+
+//$$ represent the target node to the left of the colon, 
+//$1 represent the first child node, 
+//$2 represent the second child node etc...
+//yylval is the value of the token returned by scanner
 
 // program structure
 program     : database_stmt ';' {
